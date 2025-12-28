@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Model cache (sentence-transformers downloads models here)
+.cache/
+models/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Keep session logs (they're intentionally tracked)
+# .session_logs/  # DO NOT IGNORE - these are your project memory
+
+# Keep investigation docs (they're intentionally tracked)
+# docs/investigations/  # DO NOT IGNORE
+
+# Temporary files
+*.tmp
+*.bak
+.~*

@@ -1,0 +1,9 @@
+# Python dependencies for claude-session-memory-template
+
+# Semantic search
+sentence-transformers>=2.2.0
+torch>=2.0.0
+
+# Optional: For better performance on GPU
+# torchvision>=0.15.0
+# torchaudio>=2.0.0
