@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **project template** for implementing persistent, git-versioned memory in Claude Code sessions. It uses a two-layer memory system:
 - **Layer 1: Raw Session Logs** (`.session_logs/`) - Complete temporal record of all work
-- **Layer 2: Investigations** (`docs/investigations/`) - Curated hypothesis-driven research documentation
+- **Layer 2: Curated Documentation** (`docs/`) - Organized knowledge:
+  - `investigations/` - Hypothesis-driven research with experiments and conclusions
+  - `decisions/` - Architecture Decision Records (ADRs)
+  - `reference/` - Methodologies, gotchas, quick references
 
 ## Key Commands
 
