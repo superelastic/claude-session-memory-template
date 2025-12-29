@@ -22,12 +22,32 @@ if [ ! -d "$CLAUDE_SESSION_DIR" ]; then
   exit 1
 fi
 
-# Find most recent non-agent session
-LATEST_SESSION=$(ls -t "$CLAUDE_SESSION_DIR"/*.jsonl 2>/dev/null | grep -v "agent-" | head -1)
+# Find sessions with meaningful content (user/assistant messages)
+# Sort by size descending - larger files have more content
+SESSIONS_BY_SIZE=$(ls -S "$CLAUDE_SESSION_DIR"/*.jsonl 2>/dev/null | grep -v "agent-")
 
-if [ -z "$LATEST_SESSION" ]; then
+if [ -z "$SESSIONS_BY_SIZE" ]; then
   echo "❌ No session files found in $CLAUDE_SESSION_DIR"
   ls -la "$CLAUDE_SESSION_DIR"
+  exit 1
+fi
+
+# Find first session with actual user/assistant content
+LATEST_SESSION=""
+for session in $SESSIONS_BY_SIZE; do
+  # Check if session has user or assistant messages (semantic check)
+  if grep -q '"type":"user"\|"type":"assistant"' "$session" 2>/dev/null; then
+    LATEST_SESSION="$session"
+    break
+  fi
+done
+
+if [ -z "$LATEST_SESSION" ]; then
+  echo "❌ No sessions with meaningful content found"
+  echo "Sessions checked:"
+  for s in $SESSIONS_BY_SIZE; do
+    echo "  - $(basename "$s") ($(du -h "$s" | cut -f1))"
+  done
   exit 1
 fi
 
@@ -46,7 +66,7 @@ echo "✓ Copied JSONL: $TARGET_JSONL"
 
 # Convert to markdown if converter exists
 if [ -f "scripts/convert_session.py" ]; then
-  if python scripts/convert_session.py "$TARGET_JSONL" "$TARGET_MD" 2>/dev/null; then
+  if python3 scripts/convert_session.py "$TARGET_JSONL" "$TARGET_MD" 2>/dev/null; then
     echo "✓ Converted to markdown: $TARGET_MD"
   else
     echo "⚠ Conversion to markdown failed (not critical)"
