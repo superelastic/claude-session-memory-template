@@ -15,24 +15,22 @@ if [ -f "scratchpad.md" ]; then
     echo ""
 fi
 
-# Show recent session logs (last 3)
+# Show recent session logs - inject FULL content of last 3 sessions
+# Sessions are now compact (typically <10KB each) so this is feasible
 echo "## Recent Sessions"
 echo ""
-RECENT_SESSIONS=$(ls -t .session_logs/*/*.md 2>/dev/null | head -3)
+# Sort by filename (new format: YYYYMMDD_HHMM_UUID.md) in reverse order
+# Exclude old format files (*_raw.md) which may be duplicates
+RECENT_SESSIONS=$(ls .session_logs/*/*.md 2>/dev/null | grep -v "_raw\.md$" | sort -r | head -3)
 if [ -n "$RECENT_SESSIONS" ]; then
     for session in $RECENT_SESSIONS; do
-        echo "- $session"
+        echo "### Session: $(basename "$session")"
+        echo ""
+        cat "$session"
+        echo ""
+        echo "---"
+        echo ""
     done
-    echo ""
-    # Show summary from most recent session (first 20 lines)
-    LATEST=$(echo "$RECENT_SESSIONS" | head -1)
-    if [ -f "$LATEST" ]; then
-        echo "### Latest Session Summary"
-        echo ""
-        head -40 "$LATEST"
-        echo ""
-        echo "[... truncated, read full file if needed ...]"
-    fi
 else
     echo "(No archived sessions yet)"
 fi
