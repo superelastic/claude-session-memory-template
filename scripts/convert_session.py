@@ -228,7 +228,7 @@ def convert_session(jsonl_file, md_file):
                     f.write(f"## User\n\n{text}\n\n")
                     last_type = 'user'
 
-                # Assistant message - KEEP IN FULL
+                # Assistant message - KEEP IN FULL, extract nested tool calls
                 elif entry_type == 'assistant':
                     message = entry.get('message', {})
                     content = message.get('content', [])
@@ -256,7 +256,7 @@ def convert_session(jsonl_file, md_file):
                                 pending_tools[tool_id] = tool_name
                             last_type = 'tool'
 
-                # Tool use - SUMMARIZE (legacy top-level format)
+                # Legacy: Tool use at top level (older JSONL format)
                 elif entry_type == 'tool_use':
                     tool_name = entry.get('name', 'unknown')
                     tool_input = entry.get('input', {})
@@ -274,20 +274,29 @@ def convert_session(jsonl_file, md_file):
 
                 # Tool result - SUMMARIZE (only if error or notable)
                 elif entry_type == 'tool_result':
-                    content = entry.get('content', '')
-                    tool_id = entry.get('tool_use_id', '')
-                    tool_name = pending_tools.get(tool_id, 'unknown')
+                    # Skip - tool results are handled via pending_tools tracking
+                    pass
 
-                    # Only include if there's an error or it's very short
-                    content_str = str(content)
-                    if 'error' in content_str.lower()[:200]:
-                        summary = summarize_tool_result(content, tool_name)
-                        f.write(f"  → {summary}\n")
+                # Check for tool results nested in user messages (Claude Code format)
+                elif entry_type == 'user':
+                    # Already handled above, but check for tool_result in content
+                    message = entry.get('message', {})
+                    content = message.get('content', [])
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get('type') == 'tool_result':
+                                tool_id = block.get('tool_use_id', '')
+                                result_content = block.get('content', '')
+                                tool_name = pending_tools.get(tool_id, 'unknown')
+                                # Only include errors
+                                content_str = str(result_content)
+                                if 'error' in content_str.lower()[:200]:
+                                    summary = summarize_tool_result(result_content, tool_name)
+                                    if last_type == 'tool':
+                                        f.write(f"  → {summary}\n")
 
-                    # Don't add newline here - let tool grouping continue
-
-                # End tool grouping with newline
-                if last_type == 'tool' and entry_type not in ('tool_use', 'tool_result'):
+                # End tool grouping with newline when transitioning away
+                if last_type == 'tool' and entry_type not in ('assistant', 'tool_use', 'tool_result', 'user'):
                     f.write("\n")
 
             # Final newline if ended on tools
