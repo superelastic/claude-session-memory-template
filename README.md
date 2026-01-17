@@ -12,18 +12,34 @@ A project template for implementing persistent, git-versioned memory in Claude C
 
 ## Quick Start
 
-### 1. Use This Template
+### Option A: Add to Existing Project
+
+Run this from your project directory:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/superelastic/claude-session-memory-template/main/install.sh | bash
+```
+
+Or download and run manually:
+
+```bash
+wget https://raw.githubusercontent.com/superelastic/claude-session-memory-template/main/install.sh
+chmod +x install.sh
+./install.sh
+```
+
+### Option B: Create New Project from Template
 
 Click "Use this template" on GitHub, or:
 
 ```bash
-git clone https://github.com/yourusername/claude-session-memory-template.git my-project
+git clone https://github.com/superelastic/claude-session-memory-template.git my-project
 cd my-project
 rm -rf .git  # Remove template's git history
 git init     # Start fresh
 ```
 
-### 2. Install Dependencies
+### 2. Install Dependencies (Optional)
 
 ```bash
 pip install -r scripts/requirements.txt
@@ -136,7 +152,7 @@ Located in `scripts/`:
 
 ```bash
 # Start new project from template
-git clone https://github.com/user/claude-session-memory-template.git theta-data-analysis
+git clone https://github.com/superelastic/claude-session-memory-template.git theta-data-analysis
 cd theta-data-analysis
 
 # Install dependencies
