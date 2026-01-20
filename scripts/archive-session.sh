@@ -3,6 +3,11 @@
 #
 # Archives every session with meaningful content that hasn't been archived yet.
 # Tracks archived sessions by UUID to avoid duplicates.
+#
+# Handles resumed sessions: If a previously archived session has been resumed
+# and contains new content (source file newer than archive), the old archive
+# is replaced with the updated version. This prevents duplicate embeddings
+# when using semantic search.
 
 set -e
 
@@ -41,9 +46,27 @@ for session in "$CLAUDE_SESSION_DIR"/*.jsonl; do
 
   # Extract session UUID from filename
   SESSION_UUID=$(basename "$session" .jsonl)
+  SESSION_ID_SHORT="${SESSION_UUID:0:8}"
 
-  # Skip if already archived
+  # Check if this session was previously archived
+  PREVIOUSLY_ARCHIVED=false
   if grep -q "^$SESSION_UUID$" "$MANIFEST" 2>/dev/null; then
+    PREVIOUSLY_ARCHIVED=true
+    # Check if source is newer than any existing archive (resumed session)
+    EXISTING_MD=$(find .session_logs -name "*_${SESSION_ID_SHORT}.md" 2>/dev/null | head -1)
+    if [ -n "$EXISTING_MD" ] && [ "$session" -nt "$EXISTING_MD" ]; then
+      # Resumed session with new content - remove old archives
+      echo "↻ Updating resumed session: $SESSION_ID_SHORT"
+      find .session_logs -name "*_${SESSION_ID_SHORT}.md" -delete 2>/dev/null
+      find .session_logs -name "*_${SESSION_ID_SHORT}.jsonl" -delete 2>/dev/null
+      # Remove from manifest to re-archive
+      grep -v "^$SESSION_UUID$" "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+      PREVIOUSLY_ARCHIVED=false
+    fi
+  fi
+
+  # Skip if already archived and not updated
+  if [ "$PREVIOUSLY_ARCHIVED" = true ]; then
     SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
     continue
   fi
@@ -65,8 +88,8 @@ for session in "$CLAUDE_SESSION_DIR"/*.jsonl; do
   fi
 
   # Target filenames using session UUID for uniqueness
-  TARGET_JSONL="$TARGET_DIR/${FIRST_TS}_${SESSION_UUID:0:8}.jsonl"
-  TARGET_MD="$TARGET_DIR/${FIRST_TS}_${SESSION_UUID:0:8}.md"
+  TARGET_JSONL="$TARGET_DIR/${FIRST_TS}_${SESSION_ID_SHORT}.jsonl"
+  TARGET_MD="$TARGET_DIR/${FIRST_TS}_${SESSION_ID_SHORT}.md"
 
   # Skip if target already exists (safety check)
   if [ -f "$TARGET_JSONL" ]; then
