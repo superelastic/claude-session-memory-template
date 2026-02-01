@@ -50,7 +50,19 @@ This installs:
 chmod +x scripts/*.sh
 ```
 
-### 4. Verify Setup
+### 4. Enable Hooks (Recommended)
+
+Copy the settings file to enable automatic session memory:
+
+```bash
+cp .claude/settings.json.example .claude/settings.local.json
+```
+
+This enables:
+- **SessionEnd hook**: Automatically archives sessions when you exit
+- **SessionStart hook**: Injects context + summarizes pending sessions
+
+### 5. Verify Setup
 
 ```bash
 # Test archive script (will fail with no sessions yet - expected)
@@ -60,7 +72,7 @@ chmod +x scripts/*.sh
 python scripts/semantic_filter.py "test query"
 
 # Check directory structure
-tree -L 2 -a
+ls -la .session_logs/ sessions/
 ```
 
 ## Configuration
@@ -106,48 +118,45 @@ alias archive-session='./scripts/archive-session.sh'
 ### 1. Start Claude Code
 
 ```bash
-claude-code .
+claude  # or claude-code .
 ```
 
-### 2. Tell Claude About Protocols
+### 2. Work Normally
 
-```
-You: "Read .claude/STARTUP_PROTOCOL.md and follow the startup procedure"
-```
+With hooks enabled, everything is automatic:
+- **SessionStart hook** injects context from previous sessions
+- **Agent hook** summarizes any pending sessions
 
-Claude will:
-- Check for previous sessions (none yet)
-- Read `scratchpad.md`
-- Offer to start new work
-
-### 3. Work on Something
-
-Example:
+Just start working:
 ```
 You: "Let's test connecting to an API and see what rate limits exist"
 
 Claude: [investigates with you]
 ```
 
-### 4. Archive the Session
+### 3. End Session
 
+With hooks enabled, just exit normally (`Ctrl+D` or `/exit`). The SessionEnd hook will:
+1. Run `archive-session.sh`
+2. Copy session to `.session_logs/YYYY-MM/`
+3. Create pending markdown for summarization
+
+**Without hooks**, manually run:
 ```bash
 ./scripts/archive-session.sh
 ```
 
-**Output:**
-```
-✓ Copied JSONL: .session_logs/2025-12/28_1430_raw.jsonl
-✓ Converted to markdown: .session_logs/2025-12/28_1430_raw.md
+### 4. Next Session
 
-Session archived. Size: 156K
-Ready to commit with: git commit -m 'Session: [description]'
-```
+When you start the next session:
+1. SessionStart hook injects scratchpad and last session
+2. Agent hook summarizes pending files to `sessions/`
+3. Context is automatically restored
 
-### 5. Commit
+### 5. Commit (Optional)
 
 ```bash
-git add .session_logs/
+git add sessions/ .session_logs/
 git commit -m "Session: Initial API exploration"
 ```
 

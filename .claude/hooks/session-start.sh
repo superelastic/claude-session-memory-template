@@ -1,5 +1,5 @@
 #!/bin/bash
-# Session Start Hook - Injects project context into Claude's awareness
+# Session Start Hook - Injects context and signals pending summaries
 # Output from this script (with exit 0) is added to Claude's context
 
 cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || cd "$(dirname "$0")/../.."
@@ -11,38 +11,39 @@ echo ""
 if [ -f "scratchpad.md" ]; then
     echo "## Scratchpad"
     echo ""
-    cat scratchpad.md | head -50
+    head -50 scratchpad.md
     echo ""
 fi
 
-# Show recent session logs - inject FULL content of last 3 sessions
-# Sessions are now compact (typically <10KB each) so this is feasible
-echo "## Recent Sessions"
-echo ""
-# Sort by filename (new format: YYYYMMDD_HHMM_UUID.md) in reverse order
-# Exclude old format files (*_raw.md) which may be duplicates
-RECENT_SESSIONS=$(ls .session_logs/*/*.md 2>/dev/null | grep -v "_raw\.md$" | sort -r | head -3)
-if [ -n "$RECENT_SESSIONS" ]; then
-    for session in $RECENT_SESSIONS; do
-        echo "### Session: $(basename "$session")"
-        echo ""
-        cat "$session"
-        echo ""
-        echo "---"
-        echo ""
-    done
-else
-    echo "(No archived sessions yet)"
-fi
-echo ""
+# Check for pending session summaries
+PENDING_DIR=".session_logs/pending"
+PENDING_COUNT=$(ls -1 "$PENDING_DIR"/*.md 2>/dev/null | wc -l)
 
-# Show active investigations
-echo "## Active Investigations"
+if [ "$PENDING_COUNT" -gt 0 ]; then
+    echo "## Pending Session Summaries"
+    echo ""
+    echo "There are $PENDING_COUNT session(s) awaiting summarization in $PENDING_DIR/"
+    echo ""
+    echo "The agent hook will process these and create summaries in sessions/"
+    echo ""
+    # List pending files
+    for pending in "$PENDING_DIR"/*.md; do
+        [ -f "$pending" ] && echo "  - $(basename "$pending")"
+    done
+    echo ""
+fi
+
+# Show most recent session summary (if exists)
+echo "## Last Session"
 echo ""
-if [ -f "docs/investigations/INDEX.md" ]; then
-    grep -A 5 "### Planned\|### In Progress" docs/investigations/INDEX.md 2>/dev/null | head -15
+LAST_SESSION=$(ls -t sessions/*.md 2>/dev/null | head -1)
+if [ -n "$LAST_SESSION" ] && [ -f "$LAST_SESSION" ]; then
+    echo "### $(basename "$LAST_SESSION")"
+    echo ""
+    cat "$LAST_SESSION"
+    echo ""
 else
-    echo "(No investigations index)"
+    echo "(No session summaries yet)"
 fi
 
 echo ""

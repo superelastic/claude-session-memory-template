@@ -2,7 +2,7 @@
 
 ## Overview
 
-This system provides persistent, git-versioned memory for Claude Code development sessions through a two-layer architecture combined with on-demand semantic search.
+This system provides persistent, git-versioned memory for Claude Code development sessions through a three-layer architecture combined with on-demand semantic search.
 
 ## The Core Problem
 
@@ -14,11 +14,27 @@ During experimental development:
 
 ## The Solution
 
-A lightweight memory system with three key components:
+A lightweight memory system with four key components:
 
 1. **Layer 1: Raw Session Logs** - Complete temporal record
-2. **Layer 2: Structured Investigations** - Curated findings
-3. **On-Demand Semantic Search** - Efficient retrieval
+2. **Layer 2: Session Summaries** - AI-generated concise summaries
+3. **Layer 3: Curated Documentation** - Investigations, decisions, references
+4. **On-Demand Semantic Search** - Efficient retrieval
+
+## The Pending Queue Pattern
+
+The core innovation is the **pending queue pattern** that separates capture from summarization:
+
+```
+SessionEnd → archive-session.sh → .session_logs/pending/*.md (verbose)
+SessionStart → agent hook → sessions/*.md (summarized) + delete pending
+```
+
+**Why this pattern?**
+- **Reliability**: Sessions are captured immediately when they end (command hook)
+- **Quality**: Summaries are created intelligently at next start (agent hook)
+- **Idempotency**: Manifest tracks processed sessions, no duplicates
+- **Resume safety**: Pending files survive if session ends abruptly
 
 ## Layer 1: Raw Session Logs
 

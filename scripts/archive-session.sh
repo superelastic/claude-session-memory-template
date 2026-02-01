@@ -1,39 +1,44 @@
 #!/bin/bash
-# archive-session.sh - Archive ALL unarchived Claude Code sessions to project
+# archive-session.sh - Archive Claude Code sessions with pending queue for summarization
 #
-# Archives every session with meaningful content that hasn't been archived yet.
-# Tracks archived sessions by UUID to avoid duplicates.
+# This script:
+# 1. Finds unarchived session JSONL logs
+# 2. Checks manifest to avoid re-processing
+# 3. Archives JSONL and creates pending markdown for agent summarization
 #
-# Handles resumed sessions: If a previously archived session has been resumed
-# and contains new content (source file newer than archive), the old archive
-# is replaced with the updated version. This prevents duplicate embeddings
-# when using semantic search.
+# The pending queue pattern:
+#   SessionEnd → archive → pending/*.md
+#   SessionStart → agent summarizes pending → sessions/*.md
 
 set -e
 
-# Get current project directory and encode it
-PROJECT_DIR=$(pwd)
-ENCODED_PATH=$(echo "$PROJECT_DIR" | sed 's/\//-/g')
+# Get current project directory
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+cd "$PROJECT_DIR"
+
+# Encode project path the way Claude Code does (slashes to hyphens)
+ENCODED_PATH=$(echo "$PROJECT_DIR" | sed 's|/|-|g')
 
 # Claude's session directory for this project
 CLAUDE_SESSION_DIR="$HOME/.claude/projects/$ENCODED_PATH"
 
 # Check if directory exists
 if [ ! -d "$CLAUDE_SESSION_DIR" ]; then
-  echo "❌ No Claude sessions found for this project"
+  echo "No Claude sessions found for this project"
   echo "Expected: $CLAUDE_SESSION_DIR"
-  exit 1
+  exit 0
 fi
 
-# Target directory for archived sessions
-TARGET_DIR=".session_logs/$(date +%Y-%m)"
-mkdir -p "$TARGET_DIR"
+# Target directories
+ARCHIVE_DIR=".session_logs/$(date +%Y-%m)"
+PENDING_DIR=".session_logs/pending"
+mkdir -p "$ARCHIVE_DIR" "$PENDING_DIR"
 
 # Manifest file to track archived session UUIDs
-MANIFEST=".session_logs/.archived_sessions"
+MANIFEST=".session_logs/.manifest"
 touch "$MANIFEST"
 
-# Counter for archived sessions
+# Counters
 ARCHIVED_COUNT=0
 SKIPPED_COUNT=0
 
@@ -42,10 +47,11 @@ for session in "$CLAUDE_SESSION_DIR"/*.jsonl; do
   [ -f "$session" ] || continue
 
   # Skip agent sessions
-  basename "$session" | grep -q "^agent-" && continue
+  BASENAME=$(basename "$session")
+  [[ "$BASENAME" == agent-* ]] && continue
 
   # Extract session UUID from filename
-  SESSION_UUID=$(basename "$session" .jsonl)
+  SESSION_UUID="${BASENAME%.jsonl}"
   SESSION_ID_SHORT="${SESSION_UUID:0:8}"
 
   # Check if this session was previously archived
@@ -53,10 +59,10 @@ for session in "$CLAUDE_SESSION_DIR"/*.jsonl; do
   if grep -q "^$SESSION_UUID$" "$MANIFEST" 2>/dev/null; then
     PREVIOUSLY_ARCHIVED=true
     # Check if source is newer than any existing archive (resumed session)
-    EXISTING_MD=$(find .session_logs -name "*_${SESSION_ID_SHORT}.md" 2>/dev/null | head -1)
+    EXISTING_MD=$(find .session_logs -name "*_${SESSION_ID_SHORT}.md" -not -path ".session_logs/pending/*" 2>/dev/null | head -1)
     if [ -n "$EXISTING_MD" ] && [ "$session" -nt "$EXISTING_MD" ]; then
       # Resumed session with new content - remove old archives
-      echo "↻ Updating resumed session: $SESSION_ID_SHORT"
+      echo "Updating resumed session: $SESSION_ID_SHORT"
       find .session_logs -name "*_${SESSION_ID_SHORT}.md" -delete 2>/dev/null
       find .session_logs -name "*_${SESSION_ID_SHORT}.jsonl" -delete 2>/dev/null
       # Remove from manifest to re-archive
@@ -79,17 +85,20 @@ for session in "$CLAUDE_SESSION_DIR"/*.jsonl; do
     continue
   fi
 
-  # Get session timestamp from first entry, or use file modification time
-  FIRST_TS=$(grep -m1 '"timestamp"' "$session" 2>/dev/null | sed -n 's/.*"timestamp":"\([0-9-]*\)T\([0-9:]*\).*/\1_\2/p' | tr -d ':-' | cut -c1-13)
+  # Get session timestamp from first entry
+  FIRST_TS=$(grep -m1 '"timestamp"' "$session" 2>/dev/null | \
+    sed -n 's/.*"timestamp":"\([0-9-]*\)T\([0-9:]*\).*/\1_\2/p' | \
+    tr -d ':-' | cut -c1-13)
 
   # Fallback to file modification time if no timestamp found
   if [ -z "$FIRST_TS" ]; then
     FIRST_TS=$(date -r "$session" +%Y%m%d_%H%M)
   fi
 
-  # Target filenames using session UUID for uniqueness
-  TARGET_JSONL="$TARGET_DIR/${FIRST_TS}_${SESSION_ID_SHORT}.jsonl"
-  TARGET_MD="$TARGET_DIR/${FIRST_TS}_${SESSION_ID_SHORT}.md"
+  # Target filenames
+  ARCHIVE_NAME="${FIRST_TS}_${SESSION_ID_SHORT}"
+  TARGET_JSONL="$ARCHIVE_DIR/${ARCHIVE_NAME}.jsonl"
+  PENDING_MD="$PENDING_DIR/${ARCHIVE_NAME}.md"
 
   # Skip if target already exists (safety check)
   if [ -f "$TARGET_JSONL" ]; then
@@ -98,34 +107,29 @@ for session in "$CLAUDE_SESSION_DIR"/*.jsonl; do
     continue
   fi
 
-  # Copy JSONL
+  # Copy JSONL to archive
   cp "$session" "$TARGET_JSONL"
 
-  # Convert to markdown
+  # Convert to pending markdown (for agent summarization on next session start)
   if [ -f "scripts/convert_session.py" ]; then
-    if python3 scripts/convert_session.py "$TARGET_JSONL" "$TARGET_MD" 2>/dev/null; then
-      echo "✓ Archived: $TARGET_MD ($(du -h "$TARGET_JSONL" | cut -f1))"
+    if python3 scripts/convert_session.py "$TARGET_JSONL" "$PENDING_MD" 2>/dev/null; then
+      echo "Archived: $ARCHIVE_NAME (pending summarization)"
     else
-      echo "✓ Archived: $TARGET_JSONL (markdown conversion failed)"
+      echo "Archived: $TARGET_JSONL (markdown conversion failed)"
     fi
   else
-    echo "✓ Archived: $TARGET_JSONL"
+    echo "Archived: $TARGET_JSONL"
   fi
 
   # Mark as archived
   echo "$SESSION_UUID" >> "$MANIFEST"
   ARCHIVED_COUNT=$((ARCHIVED_COUNT + 1))
-
-  # Stage markdown for git (JSONL is gitignored)
-  git add "$TARGET_MD" 2>/dev/null || true
 done
 
 echo ""
 if [ $ARCHIVED_COUNT -eq 0 ]; then
   echo "No new sessions to archive ($SKIPPED_COUNT already archived or empty)"
 else
-  echo "Archived $ARCHIVED_COUNT new session(s), skipped $SKIPPED_COUNT"
-  echo ""
-  echo "Next steps:"
-  echo "  git commit -m 'Session: [description]'"
+  echo "Archived $ARCHIVED_COUNT session(s), skipped $SKIPPED_COUNT"
+  echo "Pending files will be summarized on next session start"
 fi

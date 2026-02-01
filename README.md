@@ -4,28 +4,18 @@ A project template for implementing persistent, git-versioned memory in Claude C
 
 ## What This Provides
 
-- ✅ **Automatic session archiving** - Preserve complete Claude Code sessions with your project
-- ✅ **Investigation documentation** - Structured hypothesis-driven research documentation
-- ✅ **Semantic search** - Find relevant past work across all investigations
-- ✅ **Git-versioned memory** - Full project history travels with your code
-- ✅ **Context restoration** - Claude can restore context from previous sessions
+- **Automatic session archiving** - Sessions captured on exit via hooks
+- **Intelligent summarization** - Agent hook creates concise summaries at session start
+- **Semantic search** - Find relevant past work with vector embeddings
+- **Git-versioned memory** - Full project history travels with your code
+- **Slash commands** - `/startup` and `/session-end` for manual control
 
 ## Quick Start
 
 ### Option A: Add to Existing Project
 
-Run this from your project directory:
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/superelastic/claude-session-memory-template/main/install.sh | bash
-```
-
-Or download and run manually:
-
-```bash
-wget https://raw.githubusercontent.com/superelastic/claude-session-memory-template/main/install.sh
-chmod +x install.sh
-./install.sh
 ```
 
 ### Option B: Create New Project from Template
@@ -35,150 +25,147 @@ Click "Use this template" on GitHub, or:
 ```bash
 git clone https://github.com/superelastic/claude-session-memory-template.git my-project
 cd my-project
-rm -rf .git  # Remove template's git history
-git init     # Start fresh
+rm -rf .git && git init
 ```
 
-### 2. Install Dependencies (Optional)
+### Enable Hooks
+
+Copy the settings file to enable automatic session memory:
+
+```bash
+cp .claude/settings.json.example .claude/settings.local.json
+```
+
+### Install Dependencies (Optional, for semantic search)
 
 ```bash
 pip install -r scripts/requirements.txt
 ```
 
-### 3. Start Working
+### Start Working
 
 ```bash
-claude-code .
+claude  # or claude-code .
 ```
 
-### 4. At Session End (Always)
+## How It Works
 
-```bash
-./scripts/archive-session.sh
-git add .session_logs/
-git commit -m "Session: [brief description]"
-```
-
-### 5. After Completing Investigation
+### The Pending Queue Pattern
 
 ```
-You: "Create investigation doc for [topic] following the template"
-
-Claude: [creates docs/investigations/topic.md]
+SessionEnd → archive-session.sh → .session_logs/pending/*.md (verbose)
+SessionStart → agent hook → sessions/*.md (summarized) + delete pending
 ```
 
-```bash
-git add docs/investigations/
-git commit -m "Investigation: [topic] - [key finding]"
-```
+1. **SessionEnd hook** runs `archive-session.sh`:
+   - Copies session JSONL to `.session_logs/YYYY-MM/`
+   - Converts to verbose markdown in `.session_logs/pending/`
+
+2. **SessionStart agent hook** processes pending files:
+   - Reads verbose transcripts
+   - Creates focused summaries in `sessions/`
+   - Deletes processed pending files
+   - Restores context for new session
+
+### Three-Layer Memory System
+
+1. **Raw Session Logs** (`.session_logs/`) - Complete temporal record
+2. **Session Summaries** (`sessions/`) - Concise AI-generated summaries
+3. **Curated Documentation** (`docs/`) - Investigations, decisions, references
 
 ## What's Included
 
-- **`.session_logs/`** - Raw session archives from Claude Code
-- **`docs/investigations/`** - Structured investigation documentation
-- **`.claude/`** - Protocol documents that guide Claude's behavior
-- **`scripts/`** - Automation scripts (archive, convert, search)
-- **`scratchpad.md`** - Current work tracking
+```
+.claude/
+├── commands/           # Slash commands (/startup, /session-end)
+├── hooks/              # Shell hooks for session events
+├── settings.json.example
+└── *_PROTOCOL.md       # Behavior protocols
+
+.session_logs/
+├── pending/            # Sessions awaiting summarization
+├── YYYY-MM/            # Archived sessions by month
+└── .manifest           # Idempotency tracking
+
+sessions/               # AI-generated session summaries
+docs/                   # Curated documentation
+scripts/                # Automation (archive, convert, search)
+scratchpad.md           # Current work tracking
+```
+
+## Slash Commands
+
+- `/startup` - Manually load context from previous sessions
+- `/session-end` - Manually trigger session summary creation
+
+## Semantic Search
+
+Search across all session summaries and documentation:
+
+```bash
+# Auto-discovers sessions/, docs/, .session_logs/
+python scripts/semantic_filter.py "your search query"
+
+# With options
+python scripts/semantic_filter.py "API authentication" --top-k 10 --snippets
+
+# Search specific files
+python scripts/semantic_filter.py "rate limiting" docs/investigations/*.md
+```
+
+Features:
+- Document chunking (1000 chars, 200 overlap) for better retrieval
+- Deduplication by document
+- Uses `BAAI/bge-large-en-v1.5` embeddings (local, no API needed)
 
 ## System Requirements
 
 ### Windows Users: WSL Required
 
-This template requires WSL (Windows Subsystem for Linux) when using Claude Code on Windows.
+Claude Code stores sessions in Linux-style directories only accessible from WSL.
 
-**Why:** Claude Code stores sessions in Linux-style directories only accessible from WSL:
-```
-~/.claude/projects/[encoded-path]/
-```
-
-**Setup WSL:**
 ```powershell
-# In PowerShell (Admin)
+# Install WSL
 wsl --install
 ```
 
-**Keep projects in WSL filesystem** (not `/mnt/c/`):
+Keep projects in WSL filesystem:
 ```bash
 ✓ Good: /home/youruser/projects/my-project/
 ✗ Bad:  /mnt/c/Users/youruser/projects/my-project/
 ```
 
-## How It Works
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanation.
-
-**Two-layer memory system:**
-
-1. **Layer 1: Raw Session Logs** (`.session_logs/`)
-   - Complete temporal record of all work
-   - Copied from Claude's `~/.claude/projects/[encoded-path]/`
-   - Git-versioned with project
-
-2. **Layer 2: Investigations** (`docs/investigations/`)
-   - Curated findings: Hypothesis → Experiments → Conclusions
-   - Created by Claude after completing investigations
-   - Includes links back to source sessions
-
-**On-demand semantic search:**
-- Only when grep returns too many results (>20 files)
-- Uses local sentence-transformers model
-- No external dependencies or databases
-
-## Documentation
-
-- [SETUP.md](SETUP.md) - Detailed setup and usage guide
-- [ARCHITECTURE.md](ARCHITECTURE.md) - How the system works
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
-- [WORKFLOWS.md](WORKFLOWS.md) - Step-by-step workflows for different scenarios
-
-## Protocol Documents
-
-Located in `.claude/`, these guide Claude's behavior:
-
-- `STARTUP_PROTOCOL.md` - What Claude does at session start
-- `SESSION_END_PROTOCOL.md` - Session archiving procedure
-- `INVESTIGATION_PROTOCOL.md` - Creating investigation documents
-- `RETRIEVAL_PROTOCOL.md` - Searching past work
-
-## Scripts
-
-Located in `scripts/`:
-
-- `archive-session.sh` - Copy latest Claude session to project
-- `convert_session.py` - Convert JSONL sessions to readable markdown
-- `semantic_filter.py` - Semantic search over investigations
-
 ## Example Workflow
 
 ```bash
-# Start new project from template
-git clone https://github.com/superelastic/claude-session-memory-template.git theta-data-analysis
-cd theta-data-analysis
+# Create project from template
+git clone https://github.com/superelastic/claude-session-memory-template.git my-project
+cd my-project
+rm -rf .git && git init
 
-# Install dependencies
+# Enable hooks
+cp .claude/settings.json.example .claude/settings.local.json
+
+# Install semantic search (optional)
 pip install -r scripts/requirements.txt
 
-# Start working with Claude Code
-claude-code .
+# Start working
+claude
 
-# During work: Claude follows protocols automatically
-# - Reads last session at startup
-# - Checks scratchpad for pending items
-# - Restores context
+# ... work with Claude ...
+# Sessions are automatically archived on exit
+# Summaries created on next session start
 
-# At session end
-./scripts/archive-session.sh
-
-# If investigation completed
-# Prompt Claude: "Create investigation doc for rate limiting"
-
-# Commit
-git add .session_logs/ docs/investigations/
-git commit -m "Investigation: API rate limiting analysis"
-
-# Later: Search past work
-python scripts/semantic_filter.py "how did we handle authentication"
+# Search past work
+python scripts/semantic_filter.py "how did we handle caching"
 ```
+
+## Documentation
+
+- [SETUP.md](SETUP.md) - Detailed setup guide
+- [ARCHITECTURE.md](ARCHITECTURE.md) - How the system works
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
+- [WORKFLOWS.md](WORKFLOWS.md) - Step-by-step workflows
 
 ## Contributing
 
@@ -187,7 +174,3 @@ Improvements and suggestions welcome! Please open an issue or PR.
 ## License
 
 MIT License - Use freely in any project.
-
-## Credits
-
-Based on session logging patterns from the Claude Code community and best practices in experimental development workflows.

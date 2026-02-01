@@ -8,6 +8,14 @@
             "command": ".claude/hooks/session-start.sh"
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "agent"
+          }
+        ]
       }
     ],
     "SessionEnd": [
@@ -15,7 +23,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/session-end.sh"
+            "command": ".claude/hooks/session-end.sh",
+            "timeout": 30
           }
         ]
       }
@@ -24,7 +33,8 @@
   "permissions": {
     "allow": [
       "Bash(python3:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(./scripts/*)"
     ]
   }
 }
