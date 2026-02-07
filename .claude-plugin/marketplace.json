@@ -1,0 +1,20 @@
+{
+  "name": "session-memory",
+  "owner": {
+    "name": "fisch"
+  },
+  "metadata": {
+    "description": "Git-versioned session memory plugin for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "session-memory",
+      "source": ".",
+      "description": "Git-versioned session memory with three-layer architecture: raw logs, AI summaries, and curated documentation. Sessions travel with your repo.",
+      "version": "1.0.0",
+      "license": "MIT",
+      "keywords": ["memory", "sessions", "context", "git", "search"],
+      "category": "productivity"
+    }
+  ]
+}
