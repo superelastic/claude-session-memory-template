@@ -56,13 +56,17 @@ echo ""
 echo "Step 1: Old slash commands"
 remove_if_exists ".claude/commands/startup.md"
 remove_if_exists ".claude/commands/session-end.md"
-rmdir .claude/commands 2>/dev/null && echo "  removed: .claude/commands/" || true
+if ! $DRY_RUN; then
+    rmdir .claude/commands 2>/dev/null && echo "  removed: .claude/commands/" || true
+fi
 
 # --- Step 2: Remove old hooks ---
 echo "Step 2: Old hook scripts"
 remove_if_exists ".claude/hooks/session-start.sh"
 remove_if_exists ".claude/hooks/session-end.sh"
-rmdir .claude/hooks 2>/dev/null && echo "  removed: .claude/hooks/" || true
+if ! $DRY_RUN; then
+    rmdir .claude/hooks 2>/dev/null && echo "  removed: .claude/hooks/" || true
+fi
 
 # --- Step 3: Remove old protocols ---
 echo "Step 3: Old protocol files"
