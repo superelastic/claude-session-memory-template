@@ -57,6 +57,7 @@ scratchpad.md           Current work tracking
 | `/session-memory:startup` | Manually load context from previous sessions |
 | `/session-memory:session-end` | Manually archive and summarize current session |
 | `/session-memory:search <query>` | Search past sessions and documentation |
+| `/session-memory:migrate` | Migrate from the old template to the plugin |
 
 ## MCP Tools
 
@@ -80,6 +81,25 @@ pip install sentence-transformers torch
 This enables the `semantic_search` MCP tool using `BAAI/bge-large-en-v1.5` embeddings locally — no API calls needed.
 
 **First run downloads ~400MB model.** For faster but lower-quality results, you can edit `scripts/semantic_filter.py` to use `all-MiniLM-L6-v2` instead.
+
+## Migrating from the Template
+
+If you were using the old [session-memory template](https://github.com/superelastic/claude-session-memory-template) (with files in `.claude/commands/`, `.claude/hooks/`, `scripts/`), migrate to the plugin:
+
+1. Install the plugin (see above)
+2. In your project, run `/session-memory:migrate`
+
+This does a dry run first, asks for confirmation, then removes old template files while preserving all your session data (`sessions/`, `.session_logs/`, `docs/`, `scratchpad.md`).
+
+You can also run the script directly:
+
+```bash
+# Preview changes
+bash scripts/migrate-from-template.sh --dry-run
+
+# Apply
+bash scripts/migrate-from-template.sh
+```
 
 ## Troubleshooting
 
