@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "session-memory",
-      "source": ".",
+      "source": "./",
       "description": "Git-versioned session memory with three-layer architecture: raw logs, AI summaries, and curated documentation. Sessions travel with your repo.",
       "version": "1.0.0",
       "license": "MIT",
