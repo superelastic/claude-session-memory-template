@@ -5,12 +5,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/session-start.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start-hook.sh"
           }
         ]
       },
       {
-        "matcher": "",
         "hooks": [
           {
             "type": "agent"
@@ -23,18 +22,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/session-end.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-end-hook.sh",
             "timeout": 30
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "allow": [
-      "Bash(python3:*)",
-      "Bash(git add:*)",
-      "Bash(./scripts/*)"
     ]
   }
 }

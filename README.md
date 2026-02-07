@@ -1,171 +1,112 @@
-# Claude Code Session Memory Template
+# Session Memory — Claude Code Plugin
 
-A project template for implementing persistent, git-versioned memory in Claude Code development sessions.
+A Claude Code plugin that gives your projects persistent, git-versioned memory across sessions. Sessions travel with your repo.
 
-## What This Provides
-
-- **Automatic session archiving** - Sessions captured on exit via hooks
-- **Intelligent summarization** - Agent hook creates concise summaries at session start
-- **Semantic search** - Find relevant past work with vector embeddings
-- **Git-versioned memory** - Full project history travels with your code
-- **Slash commands** - `/startup` and `/session-end` for manual control
-
-## Quick Start
-
-### Option A: Add to Existing Project
+## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/superelastic/claude-session-memory-template/main/install.sh | bash
+# From the Claude Code CLI:
+/plugin add superelastic/claude-session-memory-template
 ```
 
-### Option B: Create New Project from Template
-
-Click "Use this template" on GitHub, or:
-
-```bash
-git clone https://github.com/superelastic/claude-session-memory-template.git my-project
-cd my-project
-rm -rf .git && git init
+Then in your project:
+```
+/session-memory:setup
 ```
 
-### Enable Hooks
+This creates the storage directories and adds instructions to your project's CLAUDE.md.
 
-Copy the settings file to enable automatic session memory:
+## What It Does
 
-```bash
-cp .claude/settings.json.example .claude/settings.local.json
-```
-
-### Install Dependencies (Optional, for semantic search)
-
-```bash
-pip install -r scripts/requirements.txt
-```
-
-### Start Working
-
-```bash
-claude  # or claude-code .
-```
+- **Automatic session archiving** — Sessions captured on exit via hooks, summarized on next start
+- **Three-layer memory** — Raw logs → AI summaries → curated docs (investigations, decisions, references)
+- **Git-versioned** — Memory lives in your repo, not a local database. Share context with your team.
+- **Searchable** — Keyword search and optional semantic search via MCP tools
+- **Pending queue** — Summaries created at session start (reliable) not session end (may be interrupted)
 
 ## How It Works
-
-### The Pending Queue Pattern
 
 ```
 SessionEnd → archive-session.sh → .session_logs/pending/*.md (verbose)
 SessionStart → agent hook → sessions/*.md (summarized) + delete pending
 ```
 
-1. **SessionEnd hook** runs `archive-session.sh`:
-   - Copies session JSONL to `.session_logs/YYYY-MM/`
-   - Converts to verbose markdown in `.session_logs/pending/`
+1. When a session ends, the hook archives the raw JSONL and converts it to a verbose markdown file in `.session_logs/pending/`
+2. When the next session starts, the agent hook summarizes pending files into concise entries in `sessions/` and deletes the pending files
+3. Context from recent sessions is automatically restored at startup
 
-2. **SessionStart agent hook** processes pending files:
-   - Reads verbose transcripts
-   - Creates focused summaries in `sessions/`
-   - Deletes processed pending files
-   - Restores context for new session
-
-### Three-Layer Memory System
-
-1. **Raw Session Logs** (`.session_logs/`) - Complete temporal record
-2. **Session Summaries** (`sessions/`) - Concise AI-generated summaries
-3. **Curated Documentation** (`docs/`) - Investigations, decisions, references
-
-## What's Included
+### Storage Directories (created in your project)
 
 ```
-.claude/
-├── commands/           # Slash commands (/startup, /session-end)
-├── hooks/              # Shell hooks for session events
-├── settings.json.example
-└── *_PROTOCOL.md       # Behavior protocols
-
-.session_logs/
-├── pending/            # Sessions awaiting summarization
-├── YYYY-MM/            # Archived sessions by month
-└── .manifest           # Idempotency tracking
-
-sessions/               # AI-generated session summaries
-docs/                   # Curated documentation
-scripts/                # Automation (archive, convert, search)
-scratchpad.md           # Current work tracking
+.session_logs/          Raw session archives + pending queue
+  ├── pending/          Sessions awaiting summarization
+  └── YYYY-MM/          Archived sessions by month
+sessions/               AI-generated session summaries
+docs/
+  ├── investigations/   Hypothesis-driven research records
+  ├── decisions/        Architecture Decision Records
+  └── reference/        Methodologies and quick references
+scratchpad.md           Current work tracking
 ```
 
-## Slash Commands
+## Commands
 
-- `/startup` - Manually load context from previous sessions
-- `/session-end` - Manually trigger session summary creation
+| Command | Description |
+|---------|-------------|
+| `/session-memory:setup` | Initialize session memory in a project |
+| `/session-memory:startup` | Manually load context from previous sessions |
+| `/session-memory:session-end` | Manually archive and summarize current session |
+| `/session-memory:search <query>` | Search past sessions and documentation |
 
-## Semantic Search
+## MCP Tools
 
-Search across all session summaries and documentation:
+The plugin includes an MCP server that lets Claude autonomously search your session history:
+
+| Tool | Description |
+|------|-------------|
+| `search_sessions` | Keyword search across sessions and docs |
+| `semantic_search` | Vector similarity search (requires optional dependencies) |
+| `read_document` | Read a specific session or document |
+| `list_sessions` | List all sessions with optional pending filter |
+
+## Semantic Search (Optional)
+
+For vector-based search, install the optional dependencies:
 
 ```bash
-# Auto-discovers sessions/, docs/, .session_logs/
-python scripts/semantic_filter.py "your search query"
-
-# With options
-python scripts/semantic_filter.py "API authentication" --top-k 10 --snippets
-
-# Search specific files
-python scripts/semantic_filter.py "rate limiting" docs/investigations/*.md
+pip install sentence-transformers torch
 ```
 
-Features:
-- Document chunking (1000 chars, 200 overlap) for better retrieval
-- Deduplication by document
-- Uses `BAAI/bge-large-en-v1.5` embeddings (local, no API needed)
+This enables the `semantic_search` MCP tool using `BAAI/bge-large-en-v1.5` embeddings locally — no API calls needed.
 
-## System Requirements
+**First run downloads ~400MB model.** For faster but lower-quality results, you can edit `scripts/semantic_filter.py` to use `all-MiniLM-L6-v2` instead.
 
-### Windows Users: WSL Required
+## Troubleshooting
 
-Claude Code stores sessions in Linux-style directories only accessible from WSL.
+### "No Claude sessions found for this project"
 
-```powershell
-# Install WSL
-wsl --install
-```
+- Make sure you've run Claude Code in this project at least once
+- On Windows, ensure you're running from WSL (not native Windows)
+- Verify the project directory: `ls ~/.claude/projects/`
 
-Keep projects in WSL filesystem:
-```bash
-✓ Good: /home/youruser/projects/my-project/
-✗ Bad:  /mnt/c/Users/youruser/projects/my-project/
-```
-
-## Example Workflow
+### "Permission denied" on scripts
 
 ```bash
-# Create project from template
-git clone https://github.com/superelastic/claude-session-memory-template.git my-project
-cd my-project
-rm -rf .git && git init
-
-# Enable hooks
-cp .claude/settings.json.example .claude/settings.local.json
-
-# Install semantic search (optional)
-pip install -r scripts/requirements.txt
-
-# Start working
-claude
-
-# ... work with Claude ...
-# Sessions are automatically archived on exit
-# Summaries created on next session start
-
-# Search past work
-python scripts/semantic_filter.py "how did we handle caching"
+chmod +x scripts/*.sh scripts/*.py
 ```
 
-## Documentation
+### Sessions not being archived
 
-- [SETUP.md](SETUP.md) - Detailed setup guide
-- [ARCHITECTURE.md](ARCHITECTURE.md) - How the system works
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
-- [WORKFLOWS.md](WORKFLOWS.md) - Step-by-step workflows
+Check that hooks are enabled — the plugin's hooks should activate automatically when installed.
+
+### Windows/WSL
+
+Claude Code stores sessions in Linux paths only accessible from WSL. Keep projects in the WSL filesystem:
+
+```
+Good: /home/youruser/projects/my-project/
+Bad:  /mnt/c/Users/youruser/projects/my-project/
+```
 
 ## Contributing
 
@@ -173,4 +114,4 @@ Improvements and suggestions welcome! Please open an issue or PR.
 
 ## License
 
-MIT License - Use freely in any project.
+MIT License — Use freely in any project.

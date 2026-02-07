@@ -1,90 +1,71 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working on this repository.
 
 ## Project Overview
 
-This is a **project template** for implementing persistent, git-versioned memory in Claude Code sessions. It uses a layered memory system:
+This is a **Claude Code plugin** (`session-memory`) that provides persistent, git-versioned memory across sessions. It installs into host projects via `/plugin add`.
 
-- **Layer 1: Raw Session Logs** (`.session_logs/`) - Complete temporal record of all work
-- **Layer 2: Session Summaries** (`sessions/`) - Concise summaries created by agent hook
-- **Layer 3: Curated Documentation** (`docs/`) - Organized knowledge:
-  - `investigations/` - Hypothesis-driven research with experiments and conclusions
-  - `decisions/` - Architecture Decision Records (ADRs)
-  - `reference/` - Methodologies, gotchas, quick references
+## Plugin Structure
 
-## Session Memory Architecture
+```
+.claude-plugin/plugin.json    Plugin manifest
+skills/session-memory/         SKILL.md + references/ (progressive disclosure)
+commands/                      setup, startup, session-end, search
+hooks/hooks.json               SessionStart + SessionEnd hooks
+scripts/                       Archive, convert, search, MCP server, hook entry points
+.mcp.json                      MCP server config
+```
 
-### The Pending Queue Pattern
+## Key Architecture
+
+### Three-Layer Memory (created in host projects)
+
+1. **Raw Session Logs** (`.session_logs/`) — Complete temporal record
+2. **Session Summaries** (`sessions/`) — Concise AI-generated summaries
+3. **Curated Documentation** (`docs/`) — Investigations, decisions, references
+
+### Pending Queue Pattern
 
 ```
 SessionEnd → archive-session.sh → .session_logs/pending/*.md (verbose)
 SessionStart → agent hook → sessions/*.md (summarized) + delete pending
 ```
 
-This ensures:
-1. Sessions are captured immediately when they end (command hook)
-2. Summaries are created intelligently at next start (agent hook)
-3. No duplicate processing (pending files deleted after summary)
+### Environment Variables
 
-### Hooks Configuration
+- `CLAUDE_PLUGIN_ROOT` — Resolves in hooks.json and .mcp.json to this plugin's install path
+- `CLAUDE_PROJECT_DIR` — The host project directory (where sessions/docs live)
+- Neither resolves in SKILL.md or command markdown body — use `!`command`` dynamic injection for paths in commands
 
-Copy `.claude/settings.json.example` to `.claude/settings.local.json` to enable:
-- **SessionStart**: Command hook injects context + agent hook summarizes pending
-- **SessionEnd**: Command hook runs archive script
+## Scripts
 
-## Key Commands
+- `scripts/archive-session.sh` — Archives session JSONL to pending (uses `SCRIPT_DIR` for sibling script resolution)
+- `scripts/convert_session.py` — JSONL to markdown conversion
+- `scripts/semantic_filter.py` — Embedding search (uses `CLAUDE_PROJECT_DIR` for project root)
+- `scripts/mcp_server.py` — FastMCP server with 4 tools (search, semantic search, read, list)
+- `scripts/run-mcp-server.sh` — MCP wrapper that auto-creates venv and installs `mcp` package
+- `scripts/session-start-hook.sh` / `scripts/session-end-hook.sh` — Hook entry points
+
+## Development
 
 ```bash
-# Install dependencies (required for semantic search)
-pip install -r scripts/requirements.txt
+# Test plugin loading
+claude --plugin-dir . -p "what skills do you have?"
 
-# Archive current session (runs automatically on SessionEnd)
-./scripts/archive-session.sh
+# Test hooks
+CLAUDE_PROJECT_DIR=/tmp/test-project CLAUDE_PLUGIN_ROOT=$(pwd) bash scripts/session-end-hook.sh
+CLAUDE_PROJECT_DIR=/tmp/test-project bash scripts/session-start-hook.sh
 
-# Semantic search (auto-discovers sessions/, docs/, .session_logs/)
-python scripts/semantic_filter.py "your query"
+# Test MCP server
+CLAUDE_PROJECT_DIR=$(pwd) .venv/bin/python scripts/mcp_server.py
 
-# Quick keyword search
-rg -l "search_term" sessions/ docs/
+# Install MCP dependency
+python -m venv .venv && .venv/bin/pip install mcp
 ```
 
-## Slash Commands
+## Notes
 
-- `/startup` - Manually load context from previous sessions
-- `/session-end` - Manually create session summary (alternative to automatic hook)
-
-## Session Workflow
-
-**Automatic (with hooks enabled):**
-1. SessionEnd hook archives session to `pending/`
-2. Next SessionStart agent hook creates summary in `sessions/`
-3. Context is automatically restored
-
-**Manual:**
-```bash
-# At session end
-./scripts/archive-session.sh
-
-# At session start
-# Use /startup command or read sessions/ manually
-```
-
-## Protocols
-
-Protocol documents in `.claude/` guide session behavior:
-- **STARTUP_PROTOCOL.md** - Process pending summaries, restore context
-- **SESSION_END_PROTOCOL.md** - Archive sessions, update scratchpad
-- **INVESTIGATION_PROTOCOL.md** - When and how to create investigation docs
-- **RETRIEVAL_PROTOCOL.md** - Search strategies (grep first, semantic if >20 results)
-
-## Architecture Notes
-
-- Claude Code stores sessions at `~/.claude/projects/[encoded-path]/`
-- Path encoding: `/home/user/project` becomes `-home-user-project`
-- Semantic search uses `sentence-transformers` with `BAAI/bge-large-en-v1.5` (local)
-- Document chunking (1000 chars, 200 overlap) improves retrieval accuracy
-
-## Windows Users
-
-WSL is required. Keep projects in WSL filesystem (`/home/user/projects/`) not mounted Windows drives (`/mnt/c/`).
+- Semantic search uses `BAAI/bge-large-en-v1.5` locally (no API calls)
+- MCP venv is auto-created by `run-mcp-server.sh` on first run
+- `docs/claude-session-memory.md` is the CLAUDE.md snippet injected into host projects by `/session-memory:setup`

@@ -1,3 +1,8 @@
+---
+description: Load context from previous sessions and process pending summaries
+disable-model-invocation: true
+---
+
 # Session Startup
 
 Load context from previous sessions to maintain continuity.
@@ -18,13 +23,19 @@ Load context from previous sessions to maintain continuity.
 
 4. Check `scratchpad.md` for current TODOs and reminders
 
-5. Briefly summarize the context for the user
+5. Briefly summarize the restored context for the user
 
-## Semantic Search
+## Summary Format
 
-For finding specific past discussions:
-```bash
-python scripts/semantic_filter.py "your query here"
+```markdown
+# Session: [Brief Topic]
+
+[2-3 paragraphs: what was accomplished, key decisions, problems solved]
+
+Key points:
+- What was worked on
+- Decisions made and rationale
+- Problems encountered and solutions
+
+**Next steps:** [What to pick up next]
 ```
-
-This searches across `sessions/`, `docs/`, and other project documentation.

@@ -12,7 +12,10 @@
 
 set -e
 
-# Get current project directory
+# Resolve script directory (where convert_session.py lives)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Get current project directory (where sessions/docs live)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$PROJECT_DIR"
 
@@ -111,8 +114,8 @@ for session in "$CLAUDE_SESSION_DIR"/*.jsonl; do
   cp "$session" "$TARGET_JSONL"
 
   # Convert to pending markdown (for agent summarization on next session start)
-  if [ -f "scripts/convert_session.py" ]; then
-    if python3 scripts/convert_session.py "$TARGET_JSONL" "$PENDING_MD" 2>/dev/null; then
+  if [ -f "$SCRIPT_DIR/convert_session.py" ]; then
+    if python3 "$SCRIPT_DIR/convert_session.py" "$TARGET_JSONL" "$PENDING_MD" 2>/dev/null; then
       echo "Archived: $ARCHIVE_NAME (pending summarization)"
     else
       echo "Archived: $TARGET_JSONL (markdown conversion failed)"

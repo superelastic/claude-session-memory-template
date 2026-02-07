@@ -1,9 +1,8 @@
-# Python dependencies for claude-session-memory-template
+# Python dependencies for session-memory plugin
 
-# Semantic search
+# MCP server (auto-installed by run-mcp-server.sh)
+mcp>=1.0.0
+
+# Semantic search (optional — keyword search works without these)
 sentence-transformers>=2.2.0
 torch>=2.0.0
-
-# Optional: For better performance on GPU
-# torchvision>=0.15.0
-# torchaudio>=2.0.0

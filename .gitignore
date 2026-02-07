@@ -51,3 +51,9 @@ models/
 *.tmp
 *.bak
 .~*
+
+# Windows Zone.Identifier files (WSL artifact)
+*:Zone.Identifier
+
+# Claude Code local settings
+.claude/settings.local.json

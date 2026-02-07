@@ -16,6 +16,7 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -39,14 +40,24 @@ def get_model():
 
 
 def find_project_root():
-    """Find project root by looking for CLAUDE.md or .git."""
-    current = Path(__file__).resolve().parent
+    """Find project root (the host project, not the plugin directory).
+
+    Priority: CLAUDE_PROJECT_DIR env var > cwd traversal > cwd fallback.
+    """
+    # Prefer explicit env var (set by Claude Code)
+    env_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env_dir:
+        return Path(env_dir)
+
+    # Traverse up from cwd (not script location, which may be in plugin dir)
+    current = Path.cwd().resolve()
     while current != current.parent:
-        if (current / "CLAUDE.md").exists() or (current / ".git").exists():
+        if (current / ".git").exists() or (current / "CLAUDE.md").exists():
             return current
         current = current.parent
-    # Fallback to script's parent directory
-    return Path(__file__).resolve().parent.parent
+
+    # Fallback to cwd
+    return Path.cwd().resolve()
 
 
 def gather_documents(project_root, explicit_paths=None):

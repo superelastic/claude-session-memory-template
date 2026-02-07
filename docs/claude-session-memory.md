@@ -1,31 +1,24 @@
 ## Session Memory
 
-This project uses session memory for continuity between Claude Code sessions.
+This project uses the **session-memory** plugin for continuity between Claude Code sessions. All memory is git-versioned and travels with the repo.
 
 ### How It Works
 
-- **Session start**: Hooks auto-inject context from previous sessions
-- **Session end**: Hooks archive the session for next time
-- **Pending queue**: Sessions are captured immediately, summarized at next start
-
-### Commands
-
-- `/startup` — Manually load context from previous sessions
-- `/session-end` — Manually create a session summary
-
-### Search Past Work
-
-```bash
-# Keyword search
-rg -l "search_term" sessions/ docs/
-
-# Semantic search (requires: pip install -r scripts/requirements.txt)
-python scripts/semantic_filter.py "your query"
-```
+- **Automatic**: Hooks archive sessions on end and restore context on start
+- **Pending queue**: Sessions captured immediately, summarized intelligently at next start
+- **Searchable**: Past work is searchable via MCP tools or keyword search
 
 ### Key Directories
 
 - `sessions/` — AI-generated session summaries
 - `docs/investigations/` — Hypothesis-driven research records
 - `docs/decisions/` — Architecture Decision Records
+- `docs/reference/` — Methodologies and quick references
 - `.session_logs/` — Raw session archives
+- `scratchpad.md` — Current work tracking and TODOs
+
+### Commands
+
+- `/session-memory:startup` — Manually load context from previous sessions
+- `/session-memory:session-end` — Manually archive and summarize current session
+- `/session-memory:search <query>` — Search past sessions and documentation
