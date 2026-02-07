@@ -14,7 +14,12 @@ Initialize session memory directories and add instructions to this project's CLA
    mkdir -p .session_logs/pending sessions docs/investigations docs/decisions docs/reference
    ```
 
-2. Create `scratchpad.md` if it doesn't exist:
+2. Create `scratchpad.md` **only if it doesn't already exist** (do NOT overwrite):
+   ```bash
+   # Check first!
+   test -f scratchpad.md && echo "scratchpad.md already exists — skipping"
+   ```
+   If missing, create with:
    ```markdown
    # Project Scratchpad
 
@@ -27,7 +32,7 @@ Initialize session memory directories and add instructions to this project's CLA
    (None yet)
    ```
 
-3. Create `.session_logs/.manifest` if it doesn't exist (empty file)
+3. Create `.session_logs/.manifest` only if it doesn't exist (empty file)
 
 4. Append the session memory section to the project's `CLAUDE.md`. Read the snippet from:
    !`echo ${CLAUDE_PLUGIN_ROOT}/docs/claude-session-memory.md`
