@@ -5,6 +5,13 @@
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$PROJECT_DIR" 2>/dev/null || exit 0
 
+# Run archive first to catch any sessions missed by SessionEnd hook
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+ARCHIVE="$PLUGIN_ROOT/scripts/archive-session.sh"
+if [ -f "$ARCHIVE" ]; then
+    bash "$ARCHIVE" 2>/dev/null
+fi
+
 echo "=== SESSION MEMORY CONTEXT ==="
 echo ""
 
