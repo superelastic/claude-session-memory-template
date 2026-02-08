@@ -8,14 +8,6 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start-hook.sh"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "agent",
-            "prompt": "If there are pending session summaries listed in the SESSION MEMORY CONTEXT above, process each one: read the pending file from .session_logs/pending/, write a concise summary to sessions/ with format YYYY-MM-DD-topic.md, then delete the pending file. If no pending sessions, do nothing."
-          }
-        ]
       }
     ],
     "SessionEnd": [
