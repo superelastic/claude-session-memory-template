@@ -19,8 +19,16 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$PROJECT_DIR"
 
-# Encode project path the way Claude Code does (slashes to hyphens)
-ENCODED_PATH=$(echo "$PROJECT_DIR" | sed 's|/|-|g')
+# Encode project path the way Claude Code does (slashes and underscores to hyphens)
+ENCODED_PATH=$(echo "$PROJECT_DIR" | sed 's|[/_]|-|g')
+
+# Fallback: if the encoded path doesn't exist, try slashes-only encoding (legacy)
+if [ ! -d "$HOME/.claude/projects/$ENCODED_PATH" ]; then
+  LEGACY_PATH=$(echo "$PROJECT_DIR" | sed 's|/|-|g')
+  if [ -d "$HOME/.claude/projects/$LEGACY_PATH" ]; then
+    ENCODED_PATH="$LEGACY_PATH"
+  fi
+fi
 
 # Claude's session directory for this project
 CLAUDE_SESSION_DIR="$HOME/.claude/projects/$ENCODED_PATH"
