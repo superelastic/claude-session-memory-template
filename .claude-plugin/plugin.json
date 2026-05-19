@@ -1,6 +1,6 @@
 {
   "name": "session-memory",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Git-versioned session memory with three-layer architecture: raw logs, AI summaries, and curated documentation. Sessions travel with your repo.",
   "author": {
     "name": "fisch"
