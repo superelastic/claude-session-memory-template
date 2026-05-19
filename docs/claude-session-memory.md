@@ -8,6 +8,14 @@ This project uses the **session-memory** plugin for continuity between Claude Co
 - **Pending queue**: Sessions captured immediately, summarized intelligently at next start
 - **Searchable**: Past work is searchable via MCP tools or keyword search
 
+### Session-Start Rule
+
+If the startup-hook context lists pending session summaries, **process
+them before responding to the user's first substantive task** (see the
+session-memory skill for the per-file procedure). For casual first
+messages, curate first then answer; for substantial tasks, ask once
+whether to curate first or defer — do not silently skip.
+
 ### Key Directories
 
 - `sessions/` — AI-generated session summaries

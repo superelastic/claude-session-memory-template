@@ -15,7 +15,35 @@ fi
 echo "=== SESSION MEMORY CONTEXT ==="
 echo ""
 
-# Show scratchpad
+# Pending session summaries — PRINT FIRST so Claude sees the action item
+# before scratchpad / last-session context.
+PENDING_DIR=".session_logs/pending"
+if [ -d "$PENDING_DIR" ]; then
+    PENDING_COUNT=$(ls -1 "$PENDING_DIR"/*.md 2>/dev/null | wc -l)
+    if [ "$PENDING_COUNT" -gt 0 ]; then
+        echo "## ACTION REQUIRED — Pending Session Summaries ($PENDING_COUNT)"
+        echo ""
+        echo "Process these BEFORE responding to the user's first task. For each file:"
+        echo "  1. Read .session_logs/pending/<file>"
+        echo "  2. Write sessions/YYYY-MM-DD-<topic>.md (see skill for format)"
+        echo "  3. Delete the pending file"
+        echo ""
+        echo "If the user's first message is short / casual, do the curation pass"
+        echo "and then address it. If the message is a substantial task, ask the"
+        echo "user once whether to curate first or defer — do not silently skip."
+        echo ""
+        for f in "$PENDING_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            preview=$(awk '/^## User$/{flag=1;next} flag && NF{print;exit}' "$f" \
+                      | tr -s '[:space:]' ' ' | cut -c1-100)
+            echo "  - $(basename "$f")"
+            [ -n "$preview" ] && echo "      first prompt: ${preview}…"
+        done
+        echo ""
+    fi
+fi
+
+# Scratchpad
 if [ -f "scratchpad.md" ]; then
     echo "## Scratchpad"
     echo ""
@@ -23,24 +51,7 @@ if [ -f "scratchpad.md" ]; then
     echo ""
 fi
 
-# List pending session files
-PENDING_DIR=".session_logs/pending"
-if [ -d "$PENDING_DIR" ]; then
-    PENDING_COUNT=$(ls -1 "$PENDING_DIR"/*.md 2>/dev/null | wc -l)
-    if [ "$PENDING_COUNT" -gt 0 ]; then
-        echo "## Pending Session Summaries"
-        echo ""
-        echo "$PENDING_COUNT session(s) awaiting summarization in $PENDING_DIR/."
-        echo "Process each: read the file, write a summary to sessions/, delete the pending file."
-        echo ""
-        for f in "$PENDING_DIR"/*.md; do
-            [ -f "$f" ] && echo "  - $(basename "$f")"
-        done
-        echo ""
-    fi
-fi
-
-# Show most recent session summary
+# Most recent session summary
 if [ -d "sessions" ]; then
     LAST=$(ls -t sessions/*.md 2>/dev/null | head -1)
     if [ -n "$LAST" ] && [ -f "$LAST" ]; then

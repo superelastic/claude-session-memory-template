@@ -18,10 +18,21 @@ This project uses git-versioned session memory with three layers:
 
 ## At Session Start: Process Pending Sessions
 
-The startup hook injects context showing pending sessions. When you see pending files listed, process them:
+The startup hook injects context that may include an
+**ACTION REQUIRED — Pending Session Summaries** block. If that block is
+present, treat curating those files as a precondition to the session's
+other work:
 
-1. Read each file in `.session_logs/pending/`
-2. Write a summary to `sessions/YYYY-MM-DD-[topic].md` using this format:
+> **Rule:** Clear the pending queue before responding to the user's
+> first substantive task. If the user's first message is casual
+> (greeting, short question, or a quick lookup), curate first and then
+> answer. If it's a substantial task, ask the user once whether to
+> curate first or defer — do not silently skip.
+
+For each pending file:
+
+1. Read `.session_logs/pending/<file>`
+2. Write `sessions/YYYY-MM-DD-<topic>.md` using this format:
 
 ```markdown
 # Session: [Brief Topic]
@@ -37,9 +48,9 @@ Key points:
 ```
 
 3. Delete the processed pending file
-4. Read the most recent summary from `sessions/` to understand where we left off
-5. Check `scratchpad.md` for open TODOs
-6. Briefly tell the user what was restored
+4. After the queue is empty: read the most recent `sessions/` summary,
+   check `scratchpad.md` for open TODOs, briefly tell the user what was
+   restored
 
 **Example context restoration:**
 ```
@@ -57,7 +68,6 @@ Ready to continue on rate limiter implementation?
 
 - Only read the last 1-2 session summaries unless asked for more
 - Summarize, don't paste — provide concise context
-- Always clear the pending queue before other work
 - Skip context loading if user says "fresh start" or starts an unrelated task
 
 ## Searching Past Work
