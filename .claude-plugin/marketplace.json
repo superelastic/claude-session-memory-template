@@ -11,7 +11,7 @@
       "name": "session-memory",
       "source": "./",
       "description": "Git-versioned session memory with three-layer architecture: raw logs, AI summaries, and curated documentation. Sessions travel with your repo.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "license": "MIT",
       "keywords": ["memory", "sessions", "context", "git", "search"],
       "category": "productivity"
