@@ -1,54 +1,31 @@
 # Project Scratchpad
 
-Last updated: [Date]
+Last updated: 2026-05-21
 
 ## Currently Working On
 
-- Initial project setup
+- Plugin maintenance: version bumps, PR cleanup, pending-summary backlog processing
+
+## Recent Changes
+
+- Fixed underscore-path encoding in `archive-session.sh` (PR #1, merged as `f79aab6`, v1.1.1)
+- Made pending-summary queue impossible to ignore at SessionStart (PR #2, merged as `36442af`, v1.1.0)
+- Cleared pending-summary backlog (5 files) and committed promoted `sessions/` summaries
+- Added reference docs: `quick-start.md`, `co-located-transcripts-as-vcs-primitive.md`
 
 ## Open Items
 
-- [ ] Install dependencies (`pip install -r scripts/requirements.txt`)
-- [ ] Run first Claude Code session
-- [ ] Archive first session
+- [ ] Consider removing `disable-model-invocation: true` from `session-end.md` (Claude can't discover it, suggests wrong name)
+- [ ] Verify v1.1.1 propagates: `claude plugin update` in a project with underscores in its path, confirm sessions get archived
 
 ## Known Issues
 
-(None yet)
-
-## Decisions Pending
-
-(None yet)
+- SessionEnd hooks are best-effort — may not fire on abrupt session close (mitigated by SessionStart catchup)
+- `/plugin` UI "Update now" sometimes doesn't fetch the latest from the marketplace; workaround is remove + re-add
 
 ## Notes
 
-- Project initialized with claude-session-memory-template
-- Session memory system ready to use
-- Remember to run `./scripts/archive-session.sh` at end of each session
-
-## Quick Reference
-
-### At Session Start
-```
-User: "Read .claude/STARTUP_PROTOCOL.md and follow startup procedure"
-```
-
-### At Session End
-```bash
-./scripts/archive-session.sh
-git commit -m "Session: [description]"
-```
-
-### Create Investigation Doc
-```
-User: "Create investigation doc for [topic] following the template"
-```
-
-### Search Past Work
-```bash
-# Quick search
-rg -l "search_term" docs/investigations/
-
-# Semantic search
-python scripts/semantic_filter.py "detailed query"
-```
+- Plugin now at v1.1.1 in `.claude-plugin/plugin.json` and `marketplace.json`
+- After updating the plugin, restart Claude Code so new hooks load
+- Sanity check: `grep -q "ACTION REQUIRED" ~/.claude/plugins/cache/session-memory/session-memory/*/scripts/session-start-hook.sh`
+- `claude --plugin-dir . -p "prompt"` for quick plugin testing

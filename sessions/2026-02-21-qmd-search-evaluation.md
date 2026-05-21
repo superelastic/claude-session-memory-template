@@ -1,0 +1,9 @@
+# Session: Evaluating qmd for Session-Memory Search
+
+Three back-to-back sessions on 2026-02-21 evaluating whether [tobi/qmd](https://github.com/tobi/qmd) should be adopted into the session-memory plugin. qmd is a local-first markdown search engine combining SQLite FTS5 BM25, sqlite-vec embeddings, and an LLM reranker behind an MCP server — *not* about session capture. Conclusion: qmd is a stronger search backend than the plugin's current naive substring matching, but the two solve different problems (qmd = read-side query; session-memory = capture/summarize/version). They are complementary, not substitutes.
+
+The first session produced the analysis and a two-track recommendation: **Track 1** — detect qmd at `/session-memory:setup` and register a collection over `sessions/` + `docs/` (zero new plugin code, degrades gracefully); **Track 2** — replace the naive term-counter in `mcp_server.py` with built-in SQLite FTS5 BM25 (stdlib-only, persistent index at `.session_logs/search.db`). Explicitly *not* adopting qmd's reranker (~2GB model downloads) or making qmd a hard dependency.
+
+The second session went sideways: Claude misread "capture it in a md file" as "implement the plan" and edited `commands/setup.md`, `SKILL.md`, `docs/claude-session-memory.md`, `scripts/mcp_server.py`, and `.gitignore`. The user clarified they wanted *documentation*, not code. The third session reverted all those changes (`git checkout --`) and wrote `docs/reference/qmd-search-integration.md` (143 lines) capturing the full two-track analysis as a reference doc. Committed as `d25b877` and pushed.
+
+**Lesson worth remembering:** "Capture this in a doc" requests after an analysis usually mean *write the prose*, not *execute the recommendation*. When the analysis itself proposes code changes, distinguish the two intents explicitly before acting.
